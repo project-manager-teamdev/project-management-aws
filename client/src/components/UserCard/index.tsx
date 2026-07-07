@@ -1,4 +1,5 @@
 import { User } from "@/state/api";
+import { getS3Url } from "@/lib/s3";
 import Image from "next/image";
 import React from "react";
 
@@ -11,7 +12,7 @@ const UserCard = ({ user }: Props) => {
     <div className="flex items-center rounded border p-4 shadow">
       {user.profilePictureUrl && (
         <Image
-          src={`https://pm-s3-images.s3.us-east-2.amazonaws.com/p1.jpeg`}
+          src={getS3Url(user.profilePictureUrl)}
           alt="profile picture"
           width={32}
           height={32}

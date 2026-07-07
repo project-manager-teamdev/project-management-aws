@@ -1,4 +1,5 @@
 import { Task } from "@/state/api";
+import { getS3Url } from "@/lib/s3";
 import { format } from "date-fns";
 import Image from "next/image";
 import React from "react";
@@ -16,7 +17,7 @@ const TaskCard = ({ task }: Props) => {
           <div className="flex flex-wrap">
             {task.attachments && task.attachments.length > 0 && (
               <Image
-                src={`https://pm-s3-images.s3.us-east-2.amazonaws.com/${task.attachments[0].fileURL}`}
+                src={getS3Url(task.attachments[0].fileURL)}
                 alt={task.attachments[0].fileName}
                 width={400}
                 height={200}

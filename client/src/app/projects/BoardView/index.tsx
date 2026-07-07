@@ -6,6 +6,7 @@ import { Task as TaskType } from "@/state/api";
 import { EllipsisVertical, MessageSquareMore, Plus } from "lucide-react";
 import { format } from "date-fns";
 import Image from "next/image";
+import { getS3Url } from "@/lib/s3";
 
 type BoardProps = {
   id: string;
@@ -174,7 +175,7 @@ const Task = ({ task }: TaskProps) => {
     >
       {task.attachments && task.attachments.length > 0 && (
         <Image
-          src={`https://pm-s3-images.s3.us-east-2.amazonaws.com/${task.attachments[0].fileURL}`}
+          src={getS3Url(task.attachments[0].fileURL)}
           alt={task.attachments[0].fileName}
           width={400}
           height={200}
@@ -226,7 +227,7 @@ const Task = ({ task }: TaskProps) => {
             {task.assignee && (
               <Image
                 key={task.assignee.userId}
-                src={`https://pm-s3-images.s3.us-east-2.amazonaws.com/${task.assignee.profilePictureUrl!}`}
+                src={getS3Url(task.assignee.profilePictureUrl)}
                 alt={task.assignee.username}
                 width={30}
                 height={30}
@@ -236,7 +237,7 @@ const Task = ({ task }: TaskProps) => {
             {task.author && (
               <Image
                 key={task.author.userId}
-                src={`https://pm-s3-images.s3.us-east-2.amazonaws.com/${task.author.profilePictureUrl!}`}
+                src={getS3Url(task.author.profilePictureUrl)}
                 alt={task.author.username}
                 width={30}
                 height={30}

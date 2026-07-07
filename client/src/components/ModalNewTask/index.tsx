@@ -25,12 +25,16 @@ const ModalNewTask = ({ isOpen, onClose, id = null }: Props) => {
   const handleSubmit = async () => {
     if (!title || !authorUserId || !(id !== null || projectId)) return;
 
-    const formattedStartDate = formatISO(new Date(startDate), {
-      representation: "complete",
-    });
-    const formattedDueDate = formatISO(new Date(dueDate), {
-      representation: "complete",
-    });
+    const formattedStartDate = startDate
+      ? formatISO(new Date(startDate), {
+          representation: "complete",
+        })
+      : undefined;
+    const formattedDueDate = dueDate
+      ? formatISO(new Date(dueDate), {
+          representation: "complete",
+        })
+      : undefined;
 
     await createTask({
       title,
@@ -41,13 +45,13 @@ const ModalNewTask = ({ isOpen, onClose, id = null }: Props) => {
       startDate: formattedStartDate,
       dueDate: formattedDueDate,
       authorUserId: parseInt(authorUserId),
-      assignedUserId: parseInt(assignedUserId),
+      assignedUserId: assignedUserId ? parseInt(assignedUserId) : undefined,
       projectId: id !== null ? Number(id) : Number(projectId),
     });
   };
 
   const isFormValid = () => {
-    return title && authorUserId && !(id !== null || projectId);
+    return title && authorUserId && (id !== null || projectId);
   };
 
   const selectStyles =

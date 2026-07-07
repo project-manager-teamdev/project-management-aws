@@ -123,15 +123,18 @@ export const api = createApi({
       query: ({ projectId }) => `tasks?projectId=${projectId}`,
       providesTags: (result) =>
         result
-          ? result.map(({ id }) => ({ type: "Tasks" as const, id }))
-          : [{ type: "Tasks" as const }],
+          ? [
+              ...result.map(({ id }) => ({ type: "Tasks" as const, id })),
+              { type: "Tasks" as const, id: "LIST" },
+            ]
+          : [{ type: "Tasks" as const, id: "LIST" }],
     }),
     getTasksByUser: build.query<Task[], number>({
       query: (userId) => `tasks/user/${userId}`,
-      providesTags: (result, error, userId) =>
-        result
-          ? result.map(({ id }) => ({ type: "Tasks", id }))
-          : [{ type: "Tasks", id: userId }],
+      providesTags: (result, error, userId) => [
+        { type: "Tasks" as const, id: `USER-${userId}` },
+        ...(result?.map(({ id }) => ({ type: "Tasks" as const, id })) ?? []),
+      ],
     }),
     createTask: build.mutation<Task, Partial<Task>>({
       query: (task) => ({
@@ -139,7 +142,15 @@ export const api = createApi({
         method: "POST",
         body: task,
       }),
-      invalidatesTags: ["Tasks"],
+      invalidatesTags: (result, error, task) => [
+        { type: "Tasks" as const, id: "LIST" },
+        ...(task.authorUserId
+          ? [{ type: "Tasks" as const, id: `USER-${task.authorUserId}` }]
+          : []),
+        ...(task.assignedUserId
+          ? [{ type: "Tasks" as const, id: `USER-${task.assignedUserId}` }]
+          : []),
+      ],
     }),
     updateTaskStatus: build.mutation<Task, { taskId: number; status: string }>({
       query: ({ taskId, status }) => ({

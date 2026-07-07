@@ -1,29 +1,77 @@
 import Modal from "@/components/Modal";
-import { Priority, Status, useCreateTaskMutation } from "@/state/api";
-import React, { useState } from "react";
+import {
+  Priority,
+  Status,
+  useCreateTaskMutation,
+  useGetAuthUserQuery,
+  useGetProjectsQuery,
+  useGetUsersQuery,
+} from "@/state/api";
+import React, { useEffect, useState } from "react";
 import { formatISO } from "date-fns";
 
 type Props = {
   isOpen: boolean;
   onClose: () => void;
   id?: string | null;
+  defaultPriority?: Priority;
 };
 
-const ModalNewTask = ({ isOpen, onClose, id = null }: Props) => {
+const ModalNewTask = ({
+  isOpen,
+  onClose,
+  id = null,
+  defaultPriority = Priority.Backlog,
+}: Props) => {
   const [createTask, { isLoading }] = useCreateTaskMutation();
+  const { data: currentUser } = useGetAuthUserQuery({});
+  const { data: users } = useGetUsersQuery();
+  const { data: projects } = useGetProjectsQuery();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<Status>(Status.ToDo);
-  const [priority, setPriority] = useState<Priority>(Priority.Backlog);
+  const [priority, setPriority] = useState<Priority>(defaultPriority);
   const [tags, setTags] = useState("");
   const [startDate, setStartDate] = useState("");
   const [dueDate, setDueDate] = useState("");
-  const [authorUserId, setAuthorUserId] = useState("");
   const [assignedUserId, setAssignedUserId] = useState("");
   const [projectId, setProjectId] = useState("");
+  const [submitError, setSubmitError] = useState("");
+
+  const currentUserId = currentUser?.userDetails?.userId?.toString() ?? "";
+  const selectedProjectId = id !== null ? id : projectId;
+
+  useEffect(() => {
+    setPriority(defaultPriority);
+  }, [defaultPriority]);
+
+  useEffect(() => {
+    if (currentUserId) {
+      setAssignedUserId(currentUserId);
+    }
+  }, [currentUserId]);
+
+  useEffect(() => {
+    if (id === null && projects?.length && !projectId) {
+      setProjectId(projects[0].id.toString());
+    }
+  }, [id, projectId, projects]);
+
+  const resetForm = () => {
+    setTitle("");
+    setDescription("");
+    setStatus(Status.ToDo);
+    setPriority(defaultPriority);
+    setTags("");
+    setStartDate("");
+    setDueDate("");
+    setAssignedUserId(currentUserId);
+    setProjectId(id === null ? projects?.[0]?.id?.toString() ?? "" : "");
+    setSubmitError("");
+  };
 
   const handleSubmit = async () => {
-    if (!title || !authorUserId || !(id !== null || projectId)) return;
+    if (!title || !currentUserId || !selectedProjectId) return;
 
     const formattedStartDate = startDate
       ? formatISO(new Date(startDate), {
@@ -36,22 +84,29 @@ const ModalNewTask = ({ isOpen, onClose, id = null }: Props) => {
         })
       : undefined;
 
-    await createTask({
-      title,
-      description,
-      status,
-      priority,
-      tags,
-      startDate: formattedStartDate,
-      dueDate: formattedDueDate,
-      authorUserId: parseInt(authorUserId),
-      assignedUserId: assignedUserId ? parseInt(assignedUserId) : undefined,
-      projectId: id !== null ? Number(id) : Number(projectId),
-    });
+    try {
+      setSubmitError("");
+      await createTask({
+        title,
+        description,
+        status,
+        priority,
+        tags,
+        startDate: formattedStartDate,
+        dueDate: formattedDueDate,
+        authorUserId: parseInt(currentUserId),
+        assignedUserId: assignedUserId ? parseInt(assignedUserId) : undefined,
+        projectId: Number(selectedProjectId),
+      }).unwrap();
+      resetForm();
+      onClose();
+    } catch (error: any) {
+      setSubmitError(error?.data?.message ?? "Could not create task");
+    }
   };
 
   const isFormValid = () => {
-    return title && authorUserId && (id !== null || projectId);
+    return Boolean(title && currentUserId && selectedProjectId);
   };
 
   const selectStyles =
@@ -133,28 +188,46 @@ const ModalNewTask = ({ isOpen, onClose, id = null }: Props) => {
             onChange={(e) => setDueDate(e.target.value)}
           />
         </div>
-        <input
-          type="text"
-          className={inputStyles}
-          placeholder="Author User ID"
-          value={authorUserId}
-          onChange={(e) => setAuthorUserId(e.target.value)}
-        />
-        <input
-          type="text"
-          className={inputStyles}
-          placeholder="Assigned User ID"
-          value={assignedUserId}
-          onChange={(e) => setAssignedUserId(e.target.value)}
-        />
-        {id === null && (
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-2">
           <input
             type="text"
-            className={inputStyles}
-            placeholder="ProjectId"
+            className={`${inputStyles} bg-gray-50 text-gray-500`}
+            value={
+              currentUser?.userDetails?.username
+                ? `${currentUser.userDetails.username} (You)`
+                : "Loading current user..."
+            }
+            disabled
+          />
+          <select
+            className={selectStyles}
+            value={assignedUserId}
+            onChange={(e) => setAssignedUserId(e.target.value)}
+          >
+            <option value="">Unassigned</option>
+            {users?.map((user) => (
+              <option key={user.userId} value={user.userId}>
+                {user.username}
+              </option>
+            ))}
+          </select>
+        </div>
+        {id === null && (
+          <select
+            className={selectStyles}
             value={projectId}
             onChange={(e) => setProjectId(e.target.value)}
-          />
+          >
+            <option value="">Select Project</option>
+            {projects?.map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.name}
+              </option>
+            ))}
+          </select>
+        )}
+        {submitError && (
+          <p className="text-sm text-red-600 dark:text-red-400">{submitError}</p>
         )}
         <button
           type="submit"
